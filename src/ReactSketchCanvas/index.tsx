@@ -71,6 +71,12 @@ export const ReactSketchCanvas = React.forwardRef<
   const [resetStack, setResetStack] = React.useState<CanvasPath[]>([]);
   const [undoStack, setUndoStack] = React.useState<CanvasPath[]>([]);
   const [currentPaths, setCurrentPaths] = React.useState<CanvasPath[]>([]);
+  const [scale, setScale] = React.useState<number>(1);
+
+  const cursor = React.useMemo(
+    () => getCursor(strokeWidth * scale),
+    [strokeWidth, scale]
+  );
 
   const liftStrokeUp = React.useCallback((): void => {
     const lastStroke = currentPaths.slice(-1)?.[0] ?? null;
@@ -265,13 +271,22 @@ export const ReactSketchCanvas = React.forwardRef<
       exportWithBackgroundImage={exportWithBackgroundImage}
       preserveBackgroundImageAspectRatio={preserveBackgroundImageAspectRatio}
       allowOnlyPointerType={allowOnlyPointerType}
-      style={style}
+      style={{ cursor, ...style }}
       svgStyle={svgStyle}
       paths={currentPaths}
       isDrawing={isDrawing}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onZoom={(scale) => setScale(scale)}
     />
   );
 });
+
+function getCursor(strokeWidth: number) {
+  return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%23000000" opacity="0.3" height="${strokeWidth}" viewBox="0 0 ${strokeWidth} ${strokeWidth}" width="${strokeWidth}"><circle cx="${
+    strokeWidth / 2
+  }" cy="${strokeWidth / 2}" r="${
+    strokeWidth / 2
+  }" fill="%23000000" /></svg>') ${strokeWidth / 2} ${strokeWidth / 2}, auto`;
+}

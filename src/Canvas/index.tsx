@@ -51,6 +51,7 @@ export interface CanvasProps {
   allowOnlyPointerType: string;
   style: React.CSSProperties;
   svgStyle: React.CSSProperties;
+  onZoom?: ((scale: number) => void) | undefined;
 }
 
 export interface CanvasRef {
@@ -79,10 +80,13 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
       borderRadius: '0.25rem',
     },
     svgStyle = {},
+    onZoom,
   } = props;
   const zoomContainerRef = React.useRef<ReactZoomPanPinchRef>(null);
   const canvasRef = React.useRef<HTMLDivElement>(null);
-  const [allowZoom, setAllowZoom] = React.useState(false);
+
+  const allowZoom = true; // useKeyPress('w');
+
   // Converts mouse coordinates to relative coordinate based on the absolute position of svg
   const getCoordinates = (
     pointerEvent: React.PointerEvent<HTMLDivElement>
@@ -182,22 +186,23 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
   //#endregion Mouse Handlers
 
-  //#region Keyboard Handlers
-  const handleKeyUp = (event: KeyboardEvent): void => {
-    if (event.ctrlKey || event.altKey || event.metaKey) {
-      setAllowZoom(true);
-    } else {
-      setAllowZoom(false);
-    }
-  };
+  // //#region Keyboard Handlers
+  // const handleKeyUp = (event: KeyboardEvent): void => {
+  //   if (event.shiftKey) {
+  //     console.log('shiftKey is released.');
+  //   }
+  //   // if (event.shiftKey) {
+  //   //   setAllowZoom(true);
+  //   // } else {
+  //   //   setAllowZoom(false);
+  //   // }
+  // };
 
-  const handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.ctrlKey || event.altKey || event.metaKey) {
-      setAllowZoom(false);
-    } else {
-      setAllowZoom(true);
-    }
-  };
+  // const handleKeyDown = (event: KeyboardEvent): void => {
+  //   if (event.shiftKey) {
+  //     console.log('shiftKey is pressed.');
+  //   }
+  // };
 
   //#endregion Keyboard Handlers
 
@@ -292,23 +297,16 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     };
   }, [handlePointerUp]);
 
-  /* Add event listener to Key up to
-  catch ctr button pressed*/
-  React.useEffect(() => {
-    document.addEventListener('keyup', handleKeyUp);
-    return () => {
-      document.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [handleKeyUp]);
-
-  /* Add event listener to Key up to
-  catch ctr button released*/
-  React.useEffect(() => {
-    document.addEventListener('keydown', handleKeyDown);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [handleKeyDown]);
+  // /* Add event listener to Key up to
+  // catch ctr button released*/
+  // React.useEffect(() => {
+  //   window.addEventListener('keydown', handleKeyDown);
+  //   window.addEventListener('keyup', handleKeyUp);
+  //   return () => {
+  //     window.removeEventListener('keydown', handleKeyDown);
+  //     window.removeEventListener('keyup', handleKeyUp);
+  //   };
+  // }, []);
 
   const eraserPaths = paths.filter((path) => !path.drawMode);
 
@@ -350,6 +348,11 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
         disabled={!allowZoom}
         pinch={{ disabled: !allowZoom }}
         panning={{ disabled: !allowZoom }}
+        onZoom={(ref) => {
+          if (onZoom) {
+            onZoom(ref.state.scale);
+          }
+        }}
       >
         <TransformComponent
           wrapperStyle={{ width: '100%', height: '100%' }}
@@ -451,3 +454,34 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     </div>
   );
 });
+
+// // Hook
+// function useKeyPress(targetKey: string) {
+//   // State for keeping track of whether key is pressed
+//   const [keyPressed, setKeyPressed] = React.useState<boolean>(false);
+//   // If pressed key is our target key then set to true
+//   function downHandler({ key }: { key: string }) {
+//     if (key === targetKey && keyPressed === false) {
+//       console.debug(key + ' is pressed.');
+//       setKeyPressed(true);
+//     }
+//   }
+//   // If released key is our target key then set to false
+//   const upHandler = ({ key }: { key: string }) => {
+//     if (key === targetKey) {
+//       console.debug(key + ' is released.');
+//       setKeyPressed(false);
+//     }
+//   };
+//   // Add event listeners
+//   React.useEffect(() => {
+//     window.addEventListener('keydown', downHandler);
+//     window.addEventListener('keyup', upHandler);
+//     // Remove event listeners on cleanup
+//     return () => {
+//       window.removeEventListener('keydown', downHandler);
+//       window.removeEventListener('keyup', upHandler);
+//     };
+//   }, []); // Empty array ensures that effect is only run on mount and unmount
+//   return keyPressed;
+// }
