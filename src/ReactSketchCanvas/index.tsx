@@ -74,8 +74,8 @@ export const ReactSketchCanvas = React.forwardRef<
   const [scale, setScale] = React.useState<number>(1);
 
   const cursor = React.useMemo(
-    () => getCursor(strokeWidth * scale),
-    [strokeWidth, scale]
+    () => getCursor(strokeWidth * scale, strokeColor),
+    [strokeWidth, strokeColor, scale]
   );
 
   const liftStrokeUp = React.useCallback((): void => {
@@ -284,10 +284,15 @@ export const ReactSketchCanvas = React.forwardRef<
   );
 });
 
-function getCursor(strokeWidth: number) {
-  return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%23000000" opacity="0.3" height="${strokeWidth}" viewBox="0 0 ${strokeWidth} ${strokeWidth}" width="${strokeWidth}"><circle cx="${
-    strokeWidth / 2
-  }" cy="${strokeWidth / 2}" r="${
-    strokeWidth / 2
-  }" fill="%23000000" /></svg>') ${strokeWidth / 2} ${strokeWidth / 2}, auto`;
+function getCursor(strokeWidth: number, color: string, opacity: number = 0.3) {
+  return {
+    color,
+    width: strokeWidth,
+    opacity,
+  };
+  // return `url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%23000000" opacity="0.3" height="${strokeWidth}" viewBox="0 0 ${strokeWidth} ${strokeWidth}" width="${strokeWidth}"><circle cx="${
+  //   strokeWidth / 2
+  // }" cy="${strokeWidth / 2}" r="${
+  //   strokeWidth / 2
+  // }" fill="%23000000" /></svg>') ${strokeWidth / 2} ${strokeWidth / 2}, auto`;
 }

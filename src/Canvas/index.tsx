@@ -52,10 +52,7 @@ export interface CanvasProps {
   style: React.CSSProperties;
   svgStyle: React.CSSProperties;
   onZoom?: ((scale: number) => void) | undefined;
-  /**
-   * The cursor as SVG string.
-   */
-  cursor: string;
+  cursor: { width: number; color: string; opacity: number };
 }
 
 export interface CanvasRef {
@@ -89,7 +86,7 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
   } = props;
   const zoomContainerRef = React.useRef<ReactZoomPanPinchRef>(null);
   const canvasRef = React.useRef<HTMLDivElement>(null);
-
+  const mousePosition = useMousePosition(canvasRef);
   const allowZoom = useKeyPress('w');
 
   // Converts mouse coordinates to relative coordinate based on the absolute position of svg
@@ -301,133 +298,175 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
   );
 
   return (
-    <div
-      role="presentation"
-      ref={canvasRef}
-      className={className}
-      style={{
-        touchAction: 'none',
-        width,
-        height,
-        ...style,
-        cursor: allowZoom ? 'pointer' : cursor,
-      }}
-      touch-action="none"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-    >
-      <TransformWrapper
-        ref={zoomContainerRef}
-        disabled={!allowZoom}
-        pinch={{ disabled: !allowZoom }}
-        panning={{ disabled: !allowZoom }}
-        onZoom={(ref) => {
-          if (onZoom) {
-            onZoom(ref.state.scale);
-          }
+    <>
+      {allowZoom == false && (
+        <div
+          style={{
+            backgroundColor: cursor.color,
+            opacity: cursor.opacity,
+            borderRadius: '50%',
+            zIndex: 10,
+            width: cursor.width,
+            height: cursor.width,
+            position: 'absolute',
+            left: mousePosition.x ? mousePosition.x - cursor.width / 2 : 0,
+            top: mousePosition.y ? mousePosition.y - cursor.width / 2 : 0,
+            touchAction: 'none',
+            pointerEvents: 'none',
+          }}
+        ></div>
+      )}
+      <div
+        role="presentation"
+        ref={canvasRef}
+        className={className}
+        style={{
+          touchAction: 'none',
+          width,
+          height,
+          ...style,
+          cursor: allowZoom ? 'pointer' : 'none',
         }}
+        touch-action="none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
       >
-        <TransformComponent
-          wrapperStyle={{ width: '100%', height: '100%' }}
-          contentStyle={{ width: '100%', height: '100%' }}
+        <TransformWrapper
+          ref={zoomContainerRef}
+          disabled={!allowZoom}
+          pinch={{ disabled: !allowZoom }}
+          panning={{ disabled: !allowZoom }}
+          onZoom={(ref) => {
+            if (onZoom) {
+              onZoom(ref.state.scale);
+            }
+          }}
         >
-          <svg
-            version="1.1"
-            baseProfile="full"
-            xmlns="http://www.w3.org/2000/svg"
-            xmlnsXlink="http://www.w3.org/1999/xlink"
-            style={{
-              width: '100%',
-              height: '100%',
-              ...svgStyle,
-            }}
-            id={id}
+          <TransformComponent
+            wrapperStyle={{ width: '100%', height: '100%' }}
+            contentStyle={{ width: '100%', height: '100%' }}
           >
-            <g id={`${id}__eraser-stroke-group`} display="none">
-              <rect
-                id={`${id}__mask-background`}
-                x="0"
-                y="0"
-                width="100%"
-                height="100%"
-                fill="white"
-              />
-              {eraserPaths.map((eraserPath, i) => (
-                <SvgPath
-                  key={`${id}__eraser-${i}`}
-                  id={`${id}__eraser-${i}`}
-                  paths={eraserPath.paths}
-                  strokeColor="#000000"
-                  strokeWidth={eraserPath.strokeWidth}
-                />
-              ))}
-            </g>
-            <defs>
-              {backgroundImage && (
-                <pattern
-                  id={`${id}__background`}
+            <svg
+              version="1.1"
+              baseProfile="full"
+              xmlns="http://www.w3.org/2000/svg"
+              xmlnsXlink="http://www.w3.org/1999/xlink"
+              style={{
+                width: '100%',
+                height: '100%',
+                ...svgStyle,
+              }}
+              id={id}
+            >
+              <g id={`${id}__eraser-stroke-group`} display="none">
+                <rect
+                  id={`${id}__mask-background`}
                   x="0"
                   y="0"
                   width="100%"
                   height="100%"
-                  patternUnits="userSpaceOnUse"
-                >
-                  <image
+                  fill="white"
+                />
+                {eraserPaths.map((eraserPath, i) => (
+                  <SvgPath
+                    key={`${id}__eraser-${i}`}
+                    id={`${id}__eraser-${i}`}
+                    paths={eraserPath.paths}
+                    strokeColor="#000000"
+                    strokeWidth={eraserPath.strokeWidth}
+                  />
+                ))}
+              </g>
+              <defs>
+                {backgroundImage && (
+                  <pattern
+                    id={`${id}__background`}
                     x="0"
                     y="0"
                     width="100%"
                     height="100%"
-                    xlinkHref={backgroundImage}
-                    preserveAspectRatio={preserveBackgroundImageAspectRatio}
-                  ></image>
-                </pattern>
-              )}
+                    patternUnits="userSpaceOnUse"
+                  >
+                    <image
+                      x="0"
+                      y="0"
+                      width="100%"
+                      height="100%"
+                      xlinkHref={backgroundImage}
+                      preserveAspectRatio={preserveBackgroundImageAspectRatio}
+                    ></image>
+                  </pattern>
+                )}
 
-              {eraserPaths.map((_, i) => (
-                <mask
-                  id={`${id}__eraser-mask-${i}`}
-                  key={`${id}__eraser-mask-${i}`}
-                  maskUnits="userSpaceOnUse"
-                >
-                  <use href={`#${id}__mask-background`} />
-                  {Array.from(
-                    { length: eraserPaths.length - i },
-                    (_, j) => j + i
-                  ).map((k) => (
-                    <use
-                      key={k.toString()}
-                      href={`#${id}__eraser-${k.toString()}`}
-                    />
-                  ))}
-                </mask>
-              ))}
-            </defs>
-            <g id={`${id}__canvas-background-group`}>
-              <rect
-                id={`${id}__canvas-background`}
-                x="0"
-                y="0"
-                width="100%"
-                height="100%"
-                fill={backgroundImage ? `url(#${id}__background)` : canvasColor}
-              />
-            </g>
-            {pathGroups.map((pathGroup, i) => (
-              <g
-                id={`${id}__stroke-group-${i}`}
-                key={`${id}__stroke-group-${i}`}
-                mask={`url(#${id}__eraser-mask-${i})`}
-              >
-                <Paths id={id} paths={pathGroup} />
+                {eraserPaths.map((_, i) => (
+                  <mask
+                    id={`${id}__eraser-mask-${i}`}
+                    key={`${id}__eraser-mask-${i}`}
+                    maskUnits="userSpaceOnUse"
+                  >
+                    <use href={`#${id}__mask-background`} />
+                    {Array.from(
+                      { length: eraserPaths.length - i },
+                      (_, j) => j + i
+                    ).map((k) => (
+                      <use
+                        key={k.toString()}
+                        href={`#${id}__eraser-${k.toString()}`}
+                      />
+                    ))}
+                  </mask>
+                ))}
+              </defs>
+              <g id={`${id}__canvas-background-group`}>
+                <rect
+                  id={`${id}__canvas-background`}
+                  x="0"
+                  y="0"
+                  width="100%"
+                  height="100%"
+                  fill={
+                    backgroundImage ? `url(#${id}__background)` : canvasColor
+                  }
+                />
               </g>
-            ))}
-          </svg>
-        </TransformComponent>
-      </TransformWrapper>
-    </div>
+              {pathGroups.map((pathGroup, i) => (
+                <g
+                  id={`${id}__stroke-group-${i}`}
+                  key={`${id}__stroke-group-${i}`}
+                  mask={`url(#${id}__eraser-mask-${i})`}
+                >
+                  <Paths id={id} paths={pathGroup} />
+                </g>
+              ))}
+            </svg>
+          </TransformComponent>
+        </TransformWrapper>
+      </div>
+    </>
   );
 });
+
+const useMousePosition = (ref: React.RefObject<HTMLElement>) => {
+  const [mousePosition, setMousePosition] = React.useState<{
+    x: number | null;
+    y: number | null;
+  }>({ x: null, y: null });
+  React.useEffect(() => {
+    if (ref?.current == null) {
+      return;
+    }
+
+    const updateMousePosition = (ev: MouseEvent) => {
+      setMousePosition({ x: ev.clientX, y: ev.clientY });
+    };
+    ref.current.addEventListener('mousemove', updateMousePosition);
+    return () => {
+      ref.current!.removeEventListener('mousemove', updateMousePosition);
+    };
+  }, [ref]);
+  return mousePosition;
+};
 
 // Hook
 function useKeyPress(targetKey: string) {
