@@ -84,10 +84,8 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
   } = props;
   const zoomContainerRef = React.useRef<ReactZoomPanPinchRef>(null);
   const canvasRef = React.useRef<HTMLDivElement>(null);
-  const [pointerCache, setPointerCache] = React.useState<
-    React.PointerEvent<HTMLDivElement>[]
-  >([]);
-  const [allowZoom, setAllowZoom] = React.useState<boolean>(false); // useKeyPress('w');
+
+  const allowZoom = true; // useKeyPress('w');
 
   // Converts mouse coordinates to relative coordinate based on the absolute position of svg
   const getCoordinates = (
@@ -128,45 +126,11 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
   //#region Mouse Handlers - Mouse down, move and up
 
-  /**
-   * Handles a multitouch and returns the result.
-   * Returns false, if it is no touch or a single one.
-   * Returns true, if it is a touch withmultiple  simultaneous touch points.
-   */
-  const handleMultiTouch = (
-    cache: React.PointerEvent<HTMLDivElement>[]
-  ): boolean => {
-    let result = false;
-
-    switch (cache.length) {
-      case 0:
-        // Target element has no touch points
-        setAllowZoom(false);
-        result = false;
-        break;
-      case 1:
-        // Single touch point
-        setAllowZoom(false);
-        result = false;
-        break;
-      case 2:
-        // Two simultaneous touch points
-        setAllowZoom(true);
-        result = true;
-        break;
-      default:
-        // Three or more simultaneous touches
-        setAllowZoom(true);
-        result = true;
-    }
-    console.log('Is multitouch: ' + result ? 'true' : 'false');
-    return result;
-  };
-
   const handlePointerDown = (
     event: React.PointerEvent<HTMLDivElement>
   ): void => {
     // Allow only chosen pointer type
+
     if (
       allowOnlyPointerType !== 'all' &&
       event.pointerType !== allowOnlyPointerType
@@ -176,8 +140,7 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
 
     if (event.pointerType === 'mouse' && event.button !== 0) return;
 
-    const isMultitouch = handleMultiTouch(pointerCache);
-    if (allowZoom || isMultitouch) {
+    if (allowZoom) {
       // if zoom is allowed, drawing is forbidden
       return;
     }
@@ -199,11 +162,6 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     ) {
       return;
     }
-    const isMultitouch = handleMultiTouch(pointerCache);
-    if (allowZoom || isMultitouch) {
-      // if zoom is allowed, drawing is forbidden
-      return;
-    }
 
     const point = getCoordinates(event);
 
@@ -223,57 +181,30 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
       return;
     }
 
-    if (allowZoom) {
-      // if zoom is allowed, drawing is forbidden
-      return;
-    }
     onPointerUp();
   };
 
-  const handleBlockerPointerDown = (
-    event: React.PointerEvent<HTMLDivElement>
-  ): void => {
-    // The pointerdown event signals the start of a touch interaction.
-    // Save this event for later processing (this could be part of a
-    // multi-touch interaction) and update the background color
-    const newPointerCache = [...pointerCache, event];
-    setPointerCache(newPointerCache); // add
+  //#endregion Mouse Handlers
 
-    const isMultitouch = handleMultiTouch(newPointerCache);
-    if (isMultitouch) {
-      paths.pop(); // remove last drawn path
-      event.stopPropagation();
-    }
-  };
+  // //#region Keyboard Handlers
+  // const handleKeyUp = (event: KeyboardEvent): void => {
+  //   if (event.shiftKey) {
+  //     console.log('shiftKey is released.');
+  //   }
+  //   // if (event.shiftKey) {
+  //   //   setAllowZoom(true);
+  //   // } else {
+  //   //   setAllowZoom(false);
+  //   // }
+  // };
 
-  const handleBlockerPointerMove = (
-    event: React.PointerEvent<HTMLDivElement>
-  ): void => {
-    const isMultitouch = handleMultiTouch(pointerCache);
-    if (allowZoom || isMultitouch) {
-      event.stopPropagation();
-    }
-  };
+  // const handleKeyDown = (event: KeyboardEvent): void => {
+  //   if (event.shiftKey) {
+  //     console.log('shiftKey is pressed.');
+  //   }
+  // };
 
-  const handleBlockerPointerUp = (
-    event: React.PointerEvent<HTMLDivElement> | PointerEvent
-  ): void => {
-    // remove from pointer cache
-    const newPointerCache = [...pointerCache];
-
-    for (let i = 0; i < newPointerCache.length; i++) {
-      if (newPointerCache[i].pointerId === event.pointerId) {
-        newPointerCache.splice(i, 1);
-        break;
-      }
-    }
-    setPointerCache(newPointerCache);
-
-    const isMultitouch = handleMultiTouch(newPointerCache);
-    if (isMultitouch) {
-      event.stopPropagation();
-    }
-  };
+  //#endregion Keyboard Handlers
 
   React.useImperativeHandle(ref, () => ({
     exportImage: (imageType: ExportImageType): Promise<string> => {
@@ -397,139 +328,130 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
     [[]]
   );
   return (
-    <TransformWrapper
-      ref={zoomContainerRef}
-      disabled={!allowZoom}
-      pinch={{ disabled: !allowZoom }}
-      panning={{ disabled: !allowZoom }}
-      doubleClick={{ disabled: true }}
-      onZoom={(ref) => {
-        if (onZoom) {
-          onZoom(ref.state.scale);
-        }
+    <div
+      role="presentation"
+      ref={canvasRef}
+      className={className}
+      style={{
+        touchAction: 'none',
+        width,
+        height,
+        ...style,
       }}
+      touch-action="none"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
     >
-      <div
-        onPointerDownCapture={handleBlockerPointerDown}
-        onPointerMoveCapture={handleBlockerPointerMove}
-        onPointerUpCapture={handleBlockerPointerUp}
+      <TransformWrapper
+        ref={zoomContainerRef}
+        disabled={!allowZoom}
+        pinch={{ disabled: !allowZoom }}
+        panning={{ disabled: !allowZoom }}
+        onZoom={(ref) => {
+          if (onZoom) {
+            onZoom(ref.state.scale);
+          }
+        }}
       >
-        <div
-          role="presentation"
-          ref={canvasRef}
-          className={className}
-          style={{
-            touchAction: 'none',
-            width,
-            height,
-            ...style,
-          }}
-          touch-action="none"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
+        <TransformComponent
+          wrapperStyle={{ width: '100%', height: '100%' }}
+          contentStyle={{ width: '100%', height: '100%' }}
         >
-          <TransformComponent
-            wrapperStyle={{ width: '100%', height: '100%' }}
-            contentStyle={{ width: '100%', height: '100%' }}
+          <svg
+            version="1.1"
+            baseProfile="full"
+            xmlns="http://www.w3.org/2000/svg"
+            xmlnsXlink="http://www.w3.org/1999/xlink"
+            style={{
+              width: '100%',
+              height: '100%',
+              ...svgStyle,
+            }}
+            id={id}
           >
-            <svg
-              version="1.1"
-              baseProfile="full"
-              xmlns="http://www.w3.org/2000/svg"
-              xmlnsXlink="http://www.w3.org/1999/xlink"
-              style={{
-                width: '100%',
-                height: '100%',
-                ...svgStyle,
-              }}
-              id={id}
-            >
-              <g id={`${id}__eraser-stroke-group`} display="none">
-                <rect
-                  id={`${id}__mask-background`}
+            <g id={`${id}__eraser-stroke-group`} display="none">
+              <rect
+                id={`${id}__mask-background`}
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                fill="white"
+              />
+              {eraserPaths.map((eraserPath, i) => (
+                <SvgPath
+                  key={`${id}__eraser-${i}`}
+                  id={`${id}__eraser-${i}`}
+                  paths={eraserPath.paths}
+                  strokeColor="#000000"
+                  strokeWidth={eraserPath.strokeWidth}
+                />
+              ))}
+            </g>
+            <defs>
+              {backgroundImage && (
+                <pattern
+                  id={`${id}__background`}
                   x="0"
                   y="0"
                   width="100%"
                   height="100%"
-                  fill="white"
-                />
-                {eraserPaths.map((eraserPath, i) => (
-                  <SvgPath
-                    key={`${id}__eraser-${i}`}
-                    id={`${id}__eraser-${i}`}
-                    paths={eraserPath.paths}
-                    strokeColor="#000000"
-                    strokeWidth={eraserPath.strokeWidth}
-                  />
-                ))}
-              </g>
-              <defs>
-                {backgroundImage && (
-                  <pattern
-                    id={`${id}__background`}
+                  patternUnits="userSpaceOnUse"
+                >
+                  <image
                     x="0"
                     y="0"
                     width="100%"
                     height="100%"
-                    patternUnits="userSpaceOnUse"
-                  >
-                    <image
-                      x="0"
-                      y="0"
-                      width="100%"
-                      height="100%"
-                      xlinkHref={backgroundImage}
-                      preserveAspectRatio={preserveBackgroundImageAspectRatio}
-                    ></image>
-                  </pattern>
-                )}
+                    xlinkHref={backgroundImage}
+                    preserveAspectRatio={preserveBackgroundImageAspectRatio}
+                  ></image>
+                </pattern>
+              )}
 
-                {eraserPaths.map((_, i) => (
-                  <mask
-                    id={`${id}__eraser-mask-${i}`}
-                    key={`${id}__eraser-mask-${i}`}
-                    maskUnits="userSpaceOnUse"
-                  >
-                    <use href={`#${id}__mask-background`} />
-                    {Array.from(
-                      { length: eraserPaths.length - i },
-                      (_, j) => j + i
-                    ).map((k) => (
-                      <use
-                        key={k.toString()}
-                        href={`#${id}__eraser-${k.toString()}`}
-                      />
-                    ))}
-                  </mask>
-                ))}
-              </defs>
-              <g id={`${id}__canvas-background-group`}>
-                <rect
-                  id={`${id}__canvas-background`}
-                  x="0"
-                  y="0"
-                  width="100%"
-                  height="100%"
-                  fill={
-                    backgroundImage ? `url(#${id}__background)` : canvasColor
-                  }
-                />
-              </g>
-              {pathGroups.map((pathGroup, i) => (
-                <g
-                  id={`${id}__stroke-group-${i}`}
-                  key={`${id}__stroke-group-${i}`}
-                  mask={`url(#${id}__eraser-mask-${i})`}
+              {eraserPaths.map((_, i) => (
+                <mask
+                  id={`${id}__eraser-mask-${i}`}
+                  key={`${id}__eraser-mask-${i}`}
+                  maskUnits="userSpaceOnUse"
                 >
-                  <Paths id={id} paths={pathGroup} />
-                </g>
+                  <use href={`#${id}__mask-background`} />
+                  {Array.from(
+                    { length: eraserPaths.length - i },
+                    (_, j) => j + i
+                  ).map((k) => (
+                    <use
+                      key={k.toString()}
+                      href={`#${id}__eraser-${k.toString()}`}
+                    />
+                  ))}
+                </mask>
               ))}
-            </svg>
-          </TransformComponent>
-        </div>
-      </div>
-    </TransformWrapper>
+            </defs>
+            <g id={`${id}__canvas-background-group`}>
+              <rect
+                id={`${id}__canvas-background`}
+                x="0"
+                y="0"
+                width="100%"
+                height="100%"
+                fill={backgroundImage ? `url(#${id}__background)` : canvasColor}
+              />
+            </g>
+            {pathGroups.map((pathGroup, i) => (
+              <g
+                id={`${id}__stroke-group-${i}`}
+                key={`${id}__stroke-group-${i}`}
+                mask={`url(#${id}__eraser-mask-${i})`}
+              >
+                <Paths id={id} paths={pathGroup} />
+              </g>
+            ))}
+          </svg>
+        </TransformComponent>
+      </TransformWrapper>
+    </div>
   );
 });
 
