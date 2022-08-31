@@ -300,21 +300,7 @@ export const Canvas = React.forwardRef<CanvasRef, CanvasProps>((props, ref) => {
   return (
     <>
       {allowZoom == false && (
-        <div
-          style={{
-            backgroundColor: cursor.color,
-            opacity: cursor.opacity,
-            borderRadius: '50%',
-            zIndex: 10,
-            width: cursor.width,
-            height: cursor.width,
-            position: 'absolute',
-            left: mousePosition.x ? mousePosition.x - cursor.width / 2 : 0,
-            top: mousePosition.y ? mousePosition.y - cursor.width / 2 : 0,
-            touchAction: 'none',
-            pointerEvents: 'none',
-          }}
-        ></div>
+        <Cursor cursor={cursor} mousePosition={mousePosition} />
       )}
       <div
         role="presentation"
@@ -466,6 +452,33 @@ const useMousePosition = (ref: React.RefObject<HTMLElement>) => {
     };
   }, [ref]);
   return mousePosition;
+};
+
+interface CursorProps {
+  cursor: { width: number; color: string; opacity: number };
+  mousePosition: { x: number | null; y: number | null };
+}
+const Cursor = ({ cursor, mousePosition }: CursorProps): JSX.Element => {
+  return (
+    <div
+      style={{
+        borderWidth: 2,
+        borderStyle: 'solid',
+        borderColor: cursor.color,
+        backgroundColor: 'transparent',
+        opacity: cursor.opacity,
+        borderRadius: '50%',
+        zIndex: 10,
+        width: cursor.width,
+        height: cursor.width,
+        position: 'absolute',
+        left: mousePosition.x ? mousePosition.x - cursor.width / 2 : 0,
+        top: mousePosition.y ? mousePosition.y - cursor.width / 2 : 0,
+        touchAction: 'none',
+        pointerEvents: 'none',
+      }}
+    ></div>
+  );
 };
 
 // Hook
